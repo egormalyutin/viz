@@ -9,19 +9,29 @@ import (
 	bars "gopkg.in/cheggaaa/pb.v1"
 )
 
+func Print(text ...interface{}) {
+	t := fmt.Sprint(text...)
+	fmt.Fprintln(os.Stdout, t)
+}
+
+func Printf(templ string, text ...interface{}) {
+	t := fmt.Sprintf(templ, text...)
+	fmt.Fprintln(os.Stdout, t)
+}
+
 func Fatal(text ...interface{}) {
 	t := fmt.Sprint(text...)
-	prefix := colors.RedString("ERR:")
+	prefix := colors.RedString("ERROR: ")
 	t = prefix + t
-	fmt.Fprint(os.Stderr, t)
+	fmt.Fprintln(os.Stderr, t)
 	os.Exit(1)
 }
 
-func Fatalf(text ...interface{}) {
-	t := fmt.Sprintf(text[0].(string), text[1:]...)
-	prefix := colors.RedString("ERR:")
+func Fatalf(templ string, text ...interface{}) {
+	t := fmt.Sprintf(templ, text...)
+	prefix := colors.RedString("ERROR:")
 	t = prefix + t
-	fmt.Fprint(os.Stderr, t)
+	fmt.Fprintln(os.Stderr, t)
 	os.Exit(1)
 }
 
