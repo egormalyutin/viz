@@ -1,4 +1,5 @@
+/node_modules
 /data.csv
 /viz
-/out.html
-/output.html
+/yarn.lock
+/package-lock.json

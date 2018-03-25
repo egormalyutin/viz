@@ -14,6 +14,10 @@ func Print(text ...interface{}) {
 	fmt.Fprintln(os.Stdout, t)
 }
 
+func Println(text ...interface{}) {
+	Print(text...)
+}
+
 func Printf(templ string, text ...interface{}) {
 	t := fmt.Sprintf(templ, text...)
 	fmt.Fprintln(os.Stdout, t)
@@ -21,7 +25,7 @@ func Printf(templ string, text ...interface{}) {
 
 func Fatal(text ...interface{}) {
 	t := fmt.Sprint(text...)
-	prefix := colors.RedString("ERROR: ")
+	prefix := colors.RedString("FATAL: ")
 	t = prefix + t
 	fmt.Fprintln(os.Stderr, t)
 	os.Exit(1)
@@ -29,10 +33,24 @@ func Fatal(text ...interface{}) {
 
 func Fatalf(templ string, text ...interface{}) {
 	t := fmt.Sprintf(templ, text...)
-	prefix := colors.RedString("ERROR:")
+	prefix := colors.RedString("FATAL:")
 	t = prefix + t
 	fmt.Fprintln(os.Stderr, t)
 	os.Exit(1)
+}
+
+func Error(text ...interface{}) {
+	t := fmt.Sprint(text...)
+	prefix := colors.RedString("ERROR: ")
+	t = prefix + t
+	fmt.Fprintln(os.Stderr, t)
+}
+
+func Errorf(templ string, text ...interface{}) {
+	t := fmt.Sprintf(templ, text...)
+	prefix := colors.RedString("ERROR:")
+	t = prefix + t
+	fmt.Fprintln(os.Stderr, t)
 }
 
 func Bar(prefix string, count int) *bars.ProgressBar {
