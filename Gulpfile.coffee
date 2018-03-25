@@ -1,21 +1,22 @@
-gulp    = require 'gulp'
-lazy    = require 'lazypipe'
-watch   = require 'gulp-watch'
-plumber = require 'gulp-plumber'
-notify  = require 'gulp-notify'
-gulpif  = require 'gulp-if'
-filter  = require 'gulp-filter'
-debug   = require 'gulp-debug'
-stylus  = require 'gulp-stylus'
-pug     = require 'gulp-pug'
-coffee  = require 'gulp-coffee'
-htmlmin = require 'gulp-htmlmin'
-uglify  = require 'gulp-uglify-es'
-babel   = require 'gulp-babel'
-prefix  = require 'gulp-autoprefixer'
-csso    = require 'gulp-csso'
-fontmin = require 'gulp-fontmin'
-del     = require 'del'
+gulp       = require 'gulp'
+lazy       = require 'lazypipe'
+watch      = require 'gulp-watch'
+plumber    = require 'gulp-plumber'
+notify     = require 'gulp-notify'
+gulpif     = require 'gulp-if'
+filter     = require 'gulp-filter'
+debug      = require 'gulp-debug'
+sourcemaps = require 'gulp-sourcemaps'
+stylus     = require 'gulp-stylus'
+pug        = require 'gulp-pug'
+coffee     = require 'gulp-coffee'
+htmlmin    = require 'gulp-htmlmin'
+uglify     = require 'gulp-uglify-es'
+babel      = require 'gulp-babel'
+prefix     = require 'gulp-autoprefixer'
+csso       = require 'gulp-csso'
+fontmin    = require 'gulp-fontmin'
+del        = require 'del'
 
 process = require("process")
 argv    = require("minimist")(process.argv)
@@ -57,8 +58,9 @@ builders = (w) ->
 			.pipe gulp.dest "dist"
 	else
 		f "app/**/*.coffee"
+			.pipe sourcemaps.init()
 			.pipe coffee bare: true
-			.pipe babel presets: ['env']
+			.pipe sourcemaps.write('./maps')
 			.pipe debug title: "Compiled"
 			.pipe gulp.dest "dist"
 

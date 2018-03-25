@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/malyutinegor/viz/logger"
 )
 
@@ -95,4 +96,37 @@ func (p *CSVProviderType) Read(start int, end int) []string {
 	}
 
 	return acc
+}
+
+func (p *CSVProviderType) Watch(ch chan bool, done chan bool) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		logger.Fatal("Error when creating fsnotify watcher: ", err)
+	}
+	defer watcher.Close()
+
+	cl := make(chan bool)
+
+	go func() {
+		for {
+			select {
+			case event := <-watcher.Events:
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					ch <- true
+				}
+			case err := <-watcher.Errors:
+				logger.Fatal(fmt.Sprintf("Error when watching file \"%s\": ", p.filename), err)
+			case <-cl:
+				return
+			}
+		}
+	}()
+
+	err = watcher.Add(p.filename)
+	if err != nil {
+		logger.Fatal(fmt.Sprintf("Error when adding file \"%s\" to file watcher: ", p.filename), err)
+	}
+
+	<-done
+	cl <- true
 }

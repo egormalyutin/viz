@@ -1,6 +1,6 @@
 /* https://stackoverflow.com/a/14991797/8423881 */
 
-function parseCSV(str) {
+function parseCSV(str, delim) {
     var arr = [];
     var quote = false;  // true means we're inside a quoted field
 
@@ -19,7 +19,7 @@ function parseCSV(str) {
         if (cc == '"') { quote = !quote; continue; }
 
         // If it's a comma and we're not in a quoted field, move on to the next column
-        if (cc == ',' && !quote) { ++col; continue; }
+        if (cc == delim && !quote) { ++col; continue; }
 
         // If it's a newline (CRLF) and we're not in a quoted field, skip the next character
         // and move on to the next row and move to column 0 of that new row

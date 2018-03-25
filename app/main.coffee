@@ -20,7 +20,7 @@ $table  = byId "table"
 #### CONSTANTS ####
 ###################
 
-CHUNK_SIZE = 100
+CHUNK_SIZE = 50
 CHUNK_PX_SIZE = 0
 
 TOTAL_SIZE   = 0
@@ -50,11 +50,9 @@ do ->
 	$table.removeChild $tbody
 
 	# message
-	debug "chunk pixel size: " + CHUNK_PX_SIZE
+	debug "chunk pixel size:", CHUNK_PX_SIZE
 
-#############
-#### APP ####
-#############
+graph = []
 
 class App
 	constructor: ->
@@ -62,7 +60,8 @@ class App
 		@ws = new WebSocket "{{.}}"
 		@$activeChunks = {}
 		@readyState = 2
-		@data = received: false
+		@datas = {}
+		@i = 0
 
 	bind: ->
 		self = @
@@ -78,20 +77,24 @@ class App
 			@calculateSize n
 
 		message: (msg) ->
-			data = msg.data
-			splitted = data.split(":")
+			data = JSON.parse msg.data
 
-			if splitted[0] == "lines"
-				@commands.lines.call @, parseInt splitted[1]
-				debug "lines message:", splitted[1]
-				@readyState--
-			else
-				debug "data message"
-				@push.call @, data
+			switch data.type
+				when "linesCount"
+					@commands.lines.call @, data.linesCount
+					debug "lines message:", data.linesCount
+					@readyState--
+
+				when "read"
+					debug "data message"
+					@push.call @, data.lines, data.id
+
+				when "error"
+					alert "ERROR: " + data.error
 
 		open: ->
 			debug "connection open"
-			@ws.send "lines"
+			@ws.send '{"type":"linesCount"}'
 			@readyState--
 
 		error: (err) ->
@@ -118,21 +121,23 @@ class App
 					# load chunk content
 					cstart = currentChunk * CHUNK_SIZE
 					cend   = cstart + CHUNK_SIZE
-					self.get cstart, cend
+					self.i++
+					self.get cstart, cend, self.i
 
-					data = await self.receive()
+					data = await self.receive self.i
 
 					# fill chunk element with CSV data
-					html = ""
-					for line in data.split '\n'
-						arr = parseCSV data, ";"
+					arr = parseCSV data, ";"
 
+					html = ""
+					for line in arr
 						html += "<tr class='row'>"
-						for item in arr
-							html += "<td>" + line + "</td>"
+						for item in line
+							html += "<td>" + item + "</td>"
 						html += "</tr>"
 
 					$chunk.innerHTML = html
+					$chunk.chunkData = arr
 
 					# add chunk to table
 					$table.appendChild $chunk
@@ -143,6 +148,8 @@ class App
 			# load chunks, bounding to user view
 			loadChunk Math.floor top    / CHUNK_PX_SIZE
 			loadChunk Math.floor bottom / CHUNK_PX_SIZE
+
+			gr = []
 
 			# delete invisible chunks
 			for name, chunk of @$activeChunks
@@ -161,6 +168,12 @@ class App
 
 						# message
 						debug "deleted invisible chunk", chunk
+					else
+						gr.push chunk.chunkData
+
+			graph = gr
+
+
 
 	calculateSize: (size) ->
 		TOTAL_SIZE   = size
@@ -169,19 +182,22 @@ class App
 
 		$spacer.style.height = ALL_PX_SIZE + "px"
 
-	push: (data) ->
-		@data.data = data
-		@data.received = true
+	push: (data, id) ->
+		@datas[id].data = data
+		@datas[id].received = true
 
-	receive: ->
+	receive: (id) ->
+		@datas[id] = received: false
 		self = @
 		return new Promise (r) ->
-			Object.defineProperty self.data, "received",
+			Object.defineProperty self.datas[id], "received",
 				set: ->
-					r self.data.data
+					data = self.datas[id]
+					delete self.datas[id]
+					r data.data
 
-	get: (start, end) ->
-		@ws.send start + ":" + end
+	get: (start, end, id) ->
+		@ws.send '{"type":"read","start":'+start+',"end":'+end+',"id":'+id+'}'
 
 app = new App
 app.bind()

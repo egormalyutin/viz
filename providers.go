@@ -36,6 +36,13 @@ func (p *ProviderType) Lines() int {
 	return 0
 }
 
+func (p *ProviderType) Watch(ch chan bool, done chan bool) {
+	switch CurrentProvider {
+	case "csv":
+		CSVProvider.Watch(ch, done)
+	}
+}
+
 //////////////////////////////////////////////////////
 
 func (p *ProviderType) Set(name string) {
