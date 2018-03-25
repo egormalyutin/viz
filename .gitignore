@@ -1,5 +1,6 @@
 /node_modules
 /data.csv
-/viz
+/build
 /yarn.lock
 /package-lock.json
+/rice-box.go
