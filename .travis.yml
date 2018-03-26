@@ -1,0 +1,9 @@
+sudo: true
+
+language: go
+
+script:
+  - go get ./...
+  - go run tasks.go prepare
+  - go run tasks.go production
+  
