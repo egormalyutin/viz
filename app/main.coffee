@@ -3,6 +3,7 @@
 #################
 
 byId = -> document.getElementById arguments...
+
 debug = ->
 	console.log "[DEBUG]", arguments...
 
@@ -11,10 +12,88 @@ debug = ->
 ##################
 
 # $ here means vanilla element, not JQuery element
-$chunks = byId "chunks"
-$cont   = byId "container"
-$spacer = byId "spacer"
-$table  = byId "table"
+$chunks   = byId "chunks"
+$cont     = byId "container"
+$spacer   = byId "spacer"
+$table    = byId "table"
+$graphics = byId "graphics"
+
+##################
+#### GRAPHICS ####
+##################
+
+cacheGraph = []
+
+gctx = $graphics.getContext '2d'
+graphics = new Chart gctx,
+	type: 'line'
+	data: {
+		labels: []
+		datasets: [{
+			label: 'Graphics'
+			backgroundColor: "red"
+			borderColor: "red"
+			data: []
+			fill: false
+		}]
+	},
+	options: {
+		responsive: false
+		title: {
+			display: true
+			text: 'Graphics'
+		},
+		tooltips: {
+			mode: 'index'
+			intersect: false
+		},
+		hover: {
+			mode: 'nearest'
+			intersect: true
+		},
+		scales: {
+			xAxes: [{
+				display: true
+				scaleLabel: {
+					display: true
+					labelString: 'X'
+				}
+			}]
+			yAxes: [{
+				display: true
+				scaleLabel: {
+					display: true
+					labelString: 'Y'
+				}
+			}]
+		}
+	}
+
+equal = (a, b) ->
+	if a.length != b.length then return false
+
+	l = a.length
+	i = 0
+
+	while i < l
+		if a[i] != b[i]
+			return false
+		i++
+
+	return true
+
+parseGraphics = (chunks) ->
+	arr = []
+
+	for chunk in chunks
+		for num, line of chunk
+			arr.push parseInt line[2]
+
+	unless equal arr, graph
+		graphics.data.datasets[0].data = arr
+		graphics.data.labels = arr
+		graphics.update()
+		cacheGraph = arr
 
 ###################
 #### CONSTANTS ####
@@ -62,6 +141,7 @@ class App
 		@readyState = 2
 		@datas = {}
 		@i = 0
+		@onscrollCalled = false
 
 	bind: ->
 		self = @
@@ -84,6 +164,9 @@ class App
 					@commands.lines.call @, data.linesCount
 					debug "lines message:", data.linesCount
 					@readyState--
+					unless @onscrollCalled
+						@onscrollCalled = true
+						@onscroll()
 
 				when "read"
 					debug "data message"
@@ -171,8 +254,7 @@ class App
 					else
 						gr.push chunk.chunkData
 
-			graph = gr
-
+			parseGraphics gr
 
 
 	calculateSize: (size) ->

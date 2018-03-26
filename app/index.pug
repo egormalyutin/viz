@@ -5,12 +5,19 @@ html
 		title loading
 		link(href = "main.css", rel = "stylesheet", type = "text/css")
 	body
-		#container
-			#spacer
-			table#table
+		#top
+			canvas.chart#graphics(width = 300, height = 300)
+
+		#bottom
+			#container
+				#spacer
+				table#table
 
 		//- babel polyfill
 		script(src = "babel.js") 
+
+		//- chart.js
+		script(src = "chart.js") 
 
 		//- CSV parser
 		script(src = "csv.js") 

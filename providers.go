@@ -13,11 +13,8 @@ type ProviderType struct{}
 
 //////////////////////////////////////////////////////
 
-func (p *ProviderType) Init(cfg string) {
-	switch CurrentProvider {
-	case "csv":
-		CSVProvider.Init(cfg)
-	}
+func (p *ProviderType) InitCSV(cfg string) {
+	CSVProvider.Init(cfg)
 }
 
 func (p *ProviderType) Read(start int, end int) []string {

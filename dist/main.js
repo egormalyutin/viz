@@ -1,7 +1,7 @@
 //################
 //### HELPERS ####
 //################
-var $chunks, $cont, $spacer, $table, ALL_PX_SIZE, App, CHUNK_PX_SIZE, CHUNK_SIZE, TOTAL_CHUNKS, TOTAL_SIZE, app, byId, debug, graph;
+var $chunks, $cont, $graphics, $spacer, $table, ALL_PX_SIZE, App, CHUNK_PX_SIZE, CHUNK_SIZE, TOTAL_CHUNKS, TOTAL_SIZE, app, byId, cacheGraph, debug, equal, gctx, graph, graphics, parseGraphics;
 
 byId = function() {
   return document.getElementById(...arguments);
@@ -23,6 +23,100 @@ $cont = byId("container");
 $spacer = byId("spacer");
 
 $table = byId("table");
+
+$graphics = byId("graphics");
+
+//#################
+//### GRAPHICS ####
+//#################
+cacheGraph = [];
+
+gctx = $graphics.getContext('2d');
+
+graphics = new Chart(gctx, {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      {
+        label: 'Graphics',
+        backgroundColor: "red",
+        borderColor: "red",
+        data: [],
+        fill: false
+      }
+    ]
+  },
+  options: {
+    responsive: false,
+    title: {
+      display: true,
+      text: 'Graphics'
+    },
+    tooltips: {
+      mode: 'index',
+      intersect: false
+    },
+    hover: {
+      mode: 'nearest',
+      intersect: true
+    },
+    scales: {
+      xAxes: [
+        {
+          display: true,
+          scaleLabel: {
+            display: true,
+            labelString: 'X'
+          }
+        }
+      ],
+      yAxes: [
+        {
+          display: true,
+          scaleLabel: {
+            display: true,
+            labelString: 'Y'
+          }
+        }
+      ]
+    }
+  }
+});
+
+equal = function(a, b) {
+  var i, l;
+  if (a.length !== b.length) {
+    return false;
+  }
+  l = a.length;
+  i = 0;
+  while (i < l) {
+    if (a[i] !== b[i]) {
+      return false;
+    }
+    i++;
+  }
+  return true;
+};
+
+parseGraphics = function(chunks) {
+  var arr, chunk, j, len, line, num;
+  arr = [];
+  for (j = 0, len = chunks.length; j < len; j++) {
+    chunk = chunks[j];
+    for (num in chunk) {
+      line = chunk[num];
+      arr.push(parseInt(line[2]));
+    }
+  }
+  if (!equal(arr, graph)) {
+    graphics.data.datasets[0].data = arr;
+    graphics.data.labels = arr;
+    graphics.update();
+    return cacheGraph = arr;
+  }
+};
 
 //##################
 //### CONSTANTS ####
@@ -70,6 +164,7 @@ App = (function() {
       this.readyState = 2;
       this.datas = {};
       this.i = 0;
+      this.onscrollCalled = false;
     }
 
     bind() {
@@ -158,7 +253,7 @@ App = (function() {
             }
           } catch (error) {}
         }
-        return graph = gr;
+        return parseGraphics(gr);
       }
     }
 
@@ -209,7 +304,12 @@ App = (function() {
         case "linesCount":
           this.commands.lines.call(this, data.linesCount);
           debug("lines message:", data.linesCount);
-          return this.readyState--;
+          this.readyState--;
+          if (!this.onscrollCalled) {
+            this.onscrollCalled = true;
+            return this.onscroll();
+          }
+          break;
         case "read":
           debug("data message");
           return this.push.call(this, data.lines, data.id);

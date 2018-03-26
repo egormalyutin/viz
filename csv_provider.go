@@ -16,33 +16,6 @@ type CSVProviderType struct {
 	file     *os.File
 }
 
-// func CSVToHTML(c []string) string {
-// 	str := strings.Join(c, "\n")
-// 	reader := csv.NewReader(strings.NewReader(str))
-// 	reader.Comma = ';'
-// 	result := ""
-
-// 	for {
-// 		record, err := reader.Read()
-// 		if err == io.EOF {
-// 			break
-// 		}
-// 		if err != nil {
-// 			logger.Fatal("Error when trying to read CSV line: ", err)
-// 		}
-
-// 		lr := "<tr>"
-// 		for _, prop := range record {
-// 			lr += "<td>" + prop + "</td>"
-// 		}
-// 		lr += "</tr>"
-
-// 		result += lr + "\n"
-// 	}
-
-// 	return result
-// }
-
 var CSVProvider = &CSVProviderType{}
 
 // init CSV provider

@@ -33,7 +33,7 @@ func Fatal(text ...interface{}) {
 
 func Fatalf(templ string, text ...interface{}) {
 	t := fmt.Sprintf(templ, text...)
-	prefix := colors.RedString("FATAL:")
+	prefix := colors.RedString("FATAL: ")
 	t = prefix + t
 	fmt.Fprintln(os.Stderr, t)
 	os.Exit(1)
@@ -48,7 +48,7 @@ func Error(text ...interface{}) {
 
 func Errorf(templ string, text ...interface{}) {
 	t := fmt.Sprintf(templ, text...)
-	prefix := colors.RedString("ERROR:")
+	prefix := colors.RedString("ERROR: ")
 	t = prefix + t
 	fmt.Fprintln(os.Stderr, t)
 }

@@ -4,13 +4,18 @@ html, body
 	background: #212121
 	font-family: Roboto, Arial
 	color: white
+	
+#bottom, #top
+	display: flex
+	justify-content: center
+	position: relative
 
 #container
 	position: relative
-	border: 1px solid red
-	width: 900px
-	height: 500px
-	overflow: scroll
+	width: 600px
+	height: 350px
+	overflow-y: scroll
+	overflow-x: hidden
 
 // tbody tr, tbody tr td
 // 	margin: 3px
@@ -40,3 +45,7 @@ tbody
 .chunk
 	margin: 0
 	padding: 0
+
+.chart
+	width: 300px
+	height: 300px
