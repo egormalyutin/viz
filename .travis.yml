@@ -4,6 +4,6 @@ language: go
 
 script:
   - go get ./...
+  - go get gopkg.in/alecthomas/kingpin.v2
   - go run tasks.go prepare
   - go run tasks.go production
-  
