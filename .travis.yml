@@ -3,8 +3,7 @@ sudo: true
 language: go
 
 script:
-  - go get ./...
-  - go get gopkg.in/alecthomas/kingpin.v2
+  - go get ./... gopkg.in/alecthomas/kingpin.v2 github.com/mitchellh/gox github.com/GeertJohan/go.rice github.com/GeertJohan/go.rice/rice
   - npm i -g gulp-cli
   - npm i
   - go run tasks.go production
