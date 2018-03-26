@@ -1,7 +1,7 @@
 //################
 //### HELPERS ####
 //################
-var $chunks, $cont, $graphics, $spacer, $table, ALL_PX_SIZE, App, CHUNK_PX_SIZE, CHUNK_SIZE, TOTAL_CHUNKS, TOTAL_SIZE, app, byId, cacheGraph, debug, equal, gctx, graph, graphics, parseGraphics;
+var $chunks, $cont, $spacer, $table, $top, ALL_PX_SIZE, App, CHUNK_PX_SIZE, CHUNK_SIZE, TOTAL_CHUNKS, TOTAL_SIZE, addChart, app, byId, cacheGraph, charts, debug, graph, parseGraphics;
 
 byId = function() {
   return document.getElementById(...arguments);
@@ -24,98 +24,116 @@ $spacer = byId("spacer");
 
 $table = byId("table");
 
-$graphics = byId("graphics");
+$top = byId("top");
 
 //#################
 //### GRAPHICS ####
 //#################
 cacheGraph = [];
 
-gctx = $graphics.getContext('2d');
+charts = [false];
 
-graphics = new Chart(gctx, {
-  type: 'line',
-  data: {
-    labels: [],
-    datasets: [
-      {
-        label: 'Graphics',
-        backgroundColor: "red",
-        borderColor: "red",
-        data: [],
-        fill: false
-      }
-    ]
-  },
-  options: {
-    responsive: false,
-    title: {
-      display: true,
-      text: 'Graphics'
-    },
-    tooltips: {
-      mode: 'index',
-      intersect: false
-    },
-    hover: {
-      mode: 'nearest',
-      intersect: true
-    },
-    scales: {
-      xAxes: [
+addChart = function() {
+  var $, ctx, graphics;
+  $ = document.createElement('canvas');
+  $.classList.add("chart");
+  $.width = 265;
+  $.height = 265;
+  $top.appendChild($);
+  ctx = $.getContext('2d');
+  graphics = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
         {
-          display: true,
-          scaleLabel: {
-            display: true,
-            labelString: 'X'
-          }
-        }
-      ],
-      yAxes: [
-        {
-          display: true,
-          scaleLabel: {
-            display: true,
-            labelString: 'Y'
-          }
+          label: 'Graphics',
+          backgroundColor: "red",
+          borderColor: "red",
+          data: [],
+          fill: false
         }
       ]
+    },
+    options: {
+      responsive: false,
+      title: {
+        display: true,
+        text: 'Graphics'
+      },
+      tooltips: {
+        mode: 'index',
+        intersect: false
+      },
+      hover: {
+        mode: 'nearest',
+        intersect: true
+      },
+      scales: {
+        xAxes: [
+          {
+            display: true,
+            scaleLabel: {
+              display: true,
+              labelString: 'X'
+            }
+          }
+        ],
+        yAxes: [
+          {
+            display: true,
+            scaleLabel: {
+              display: true,
+              labelString: 'Y'
+            }
+          }
+        ]
+      }
     }
-  }
-});
-
-equal = function(a, b) {
-  var i, l;
-  if (a.length !== b.length) {
-    return false;
-  }
-  l = a.length;
-  i = 0;
-  while (i < l) {
-    if (a[i] !== b[i]) {
-      return false;
-    }
-    i++;
-  }
-  return true;
+  });
+  return charts.push(graphics);
 };
 
+addChart();
+
+addChart();
+
+addChart();
+
+addChart();
+
+addChart();
+
 parseGraphics = function(chunks) {
-  var arr, chunk, j, len, line, num;
-  arr = [];
+  var arr, arrs, chart, chunk, j, len, line, num, results;
+  arrs = [];
   for (j = 0, len = chunks.length; j < len; j++) {
     chunk = chunks[j];
     for (num in chunk) {
       line = chunk[num];
-      arr.push(parseInt(line[2]));
+      for (num in charts) {
+        chart = charts[num];
+        if (arrs[num] == null) {
+          arrs[num] = [];
+        }
+        arrs[num].push(parseFloat(line[num]));
+      }
     }
   }
-  if (!equal(arr, graph)) {
-    graphics.data.datasets[0].data = arr;
-    graphics.data.labels = arr;
-    graphics.update();
-    return cacheGraph = arr;
+  results = [];
+  for (num in arrs) {
+    arr = arrs[num];
+    if (arr !== void 0) {
+      if (charts[num] !== false) {
+        charts[num].data.datasets[0].data = arr;
+        charts[num].data.labels = arr;
+        results.push(charts[num].update());
+      } else {
+        results.push(void 0);
+      }
+    }
   }
+  return results;
 };
 
 //##################

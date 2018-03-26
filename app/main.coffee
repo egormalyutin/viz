@@ -16,7 +16,7 @@ $chunks   = byId "chunks"
 $cont     = byId "container"
 $spacer   = byId "spacer"
 $table    = byId "table"
-$graphics = byId "graphics"
+$top      = byId "top"
 
 ##################
 #### GRAPHICS ####
@@ -24,76 +24,82 @@ $graphics = byId "graphics"
 
 cacheGraph = []
 
-gctx = $graphics.getContext '2d'
-graphics = new Chart gctx,
-	type: 'line'
-	data: {
-		labels: []
-		datasets: [{
-			label: 'Graphics'
-			backgroundColor: "red"
-			borderColor: "red"
-			data: []
-			fill: false
-		}]
-	},
-	options: {
-		responsive: false
-		title: {
-			display: true
-			text: 'Graphics'
-		},
-		tooltips: {
-			mode: 'index'
-			intersect: false
-		},
-		hover: {
-			mode: 'nearest'
-			intersect: true
-		},
-		scales: {
-			xAxes: [{
-				display: true
-				scaleLabel: {
-					display: true
-					labelString: 'X'
-				}
+charts = [false]
+
+addChart = ->
+	$ = document.createElement 'canvas'
+	$.classList.add "chart"
+	$.width  = 265
+	$.height = 265
+	$top.appendChild $
+
+	ctx = $.getContext '2d'
+	graphics = new Chart ctx,
+		type: 'line'
+		data: {
+			labels: []
+			datasets: [{
+				label: 'Graphics'
+				backgroundColor: "red"
+				borderColor: "red"
+				data: []
+				fill: false
 			}]
-			yAxes: [{
+		},
+		options: {
+			responsive: false
+			title: {
 				display: true
-				scaleLabel: {
+				text: 'Graphics'
+			},
+			tooltips: {
+				mode: 'index'
+				intersect: false
+			},
+			hover: {
+				mode: 'nearest'
+				intersect: true
+			},
+			scales: {
+				xAxes: [{
 					display: true
-					labelString: 'Y'
-				}
-			}]
+					scaleLabel: {
+						display: true
+						labelString: 'X'
+					}
+				}]
+				yAxes: [{
+					display: true
+					scaleLabel: {
+						display: true
+						labelString: 'Y'
+					}
+				}]
+			}
 		}
-	}
 
-equal = (a, b) ->
-	if a.length != b.length then return false
+	charts.push graphics
 
-	l = a.length
-	i = 0
-
-	while i < l
-		if a[i] != b[i]
-			return false
-		i++
-
-	return true
+addChart()
+addChart()
+addChart()
+addChart()
+addChart()
 
 parseGraphics = (chunks) ->
-	arr = []
+	arrs = []
 
 	for chunk in chunks
 		for num, line of chunk
-			arr.push parseInt line[2]
+			for num, chart of charts
+				arrs[num] ?= []
+				arrs[num].push parseFloat line[num]
 
-	unless equal arr, graph
-		graphics.data.datasets[0].data = arr
-		graphics.data.labels = arr
-		graphics.update()
-		cacheGraph = arr
+	for num, arr of arrs when arr != undefined
+		if charts[num] != false
+			charts[num].data.datasets[0].data = arr
+			charts[num].data.labels = arr
+			charts[num].update()
 
 ###################
 #### CONSTANTS ####
