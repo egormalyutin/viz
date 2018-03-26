@@ -4,7 +4,6 @@
 /viz
 /tasks
 /viz.toml
-/dist
 /yarn.lock
 /package-lock.json
 /rice-box.go
