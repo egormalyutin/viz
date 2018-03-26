@@ -68,6 +68,10 @@ func checkPath(pth string, name string) {
 	}
 }
 
+func gox(osarch string) {
+	run("gox", "-osarch="+osarch, "-output=build/{{.Dir}}_{{.OS}}_{{.Arch}}")
+}
+
 ////////////////////////////////////////////////////////
 
 func PrepareTask() {
@@ -107,7 +111,14 @@ func RunTask() {
 func ProductionTask() {
 	run("gulp", "build", "--production")
 	run("rice", "embed-go")
-	run("gox", "-output=build/{{.Dir}}_{{.OS}}_{{.Arch}}")
+
+	os.RemoveAll("build")
+
+	gox("windows/386")
+	gox("windows/amd64")
+	gox("linux/386")
+	gox("linux/amd64")
+	gox("linux/arm")
 }
 
 ////////////////////////////////////////////////////////
