@@ -1,3 +1,15 @@
+################
+#### CONFIG ####
+################
+
+config =
+	WS: '{{.WS}}'
+	types: '{{.Types}}'
+	headers: '{{.Headers}}'
+
+	animation: false
+	animateLastChunk: true
+
 #################
 #### HELPERS ####
 #################
@@ -6,6 +18,11 @@ byId = -> document.getElementById arguments...
 
 debug = ->
 	console.log "[DEBUG]", arguments...
+
+endTimeout = null
+onend = (cb) ->
+	clearTimeout endTimeout
+	endTimeout = setTimeout cb, 1000
 
 ##################
 #### ELEMENTS ####
@@ -24,9 +41,25 @@ $top      = byId "top"
 
 cacheGraph = []
 
-charts = [false]
+charts = []
 
-addChart = ->
+[colors, getColor] = do ->
+	clr = [ "red", "green", "blue", "purple", "pink" ]
+	i = 0
+	get = ->
+		ret = clr[i]
+		i++
+		return ret
+
+	return [clr, get]
+
+timeColumn = 0
+
+addChart = (type, header) ->
+	if type == "time"
+		charts.push false
+		return
+
 	$ = document.createElement 'canvas'
 	$.classList.add "chart"
 	$.width  = 265
@@ -34,23 +67,26 @@ addChart = ->
 	$top.appendChild $
 
 	ctx = $.getContext '2d'
+	color = getColor()
+
 	graphics = new Chart ctx,
 		type: 'line'
 		data: {
 			labels: []
 			datasets: [{
-				label: 'Graphics'
-				backgroundColor: "red"
-				borderColor: "red"
+				label: header
+				backgroundColor: color
+				borderColor: color
 				data: []
 				fill: false
 			}]
 		},
 		options: {
 			responsive: false
+			animation: config.animation
 			title: {
 				display: true
-				text: 'Graphics'
+				text: header
 			},
 			tooltips: {
 				mode: 'index'
@@ -78,13 +114,7 @@ addChart = ->
 			}
 		}
 
-	charts.push graphics
-
-addChart()
-addChart()
-addChart()
-addChart()
-addChart()
+	charts.push { type, chart: graphics }
 
 parseGraphics = (chunks) ->
 	arrs = []
@@ -92,21 +122,29 @@ parseGraphics = (chunks) ->
 	for chunk in chunks
 		for num, line of chunk
 			for num, chart of charts
-				arrs[num] ?= []
-				arrs[num].push parseFloat line[num]
+				arrs[num] ?= labels: [], data: []
+				arrs[num].labels.push line[timeColumn].split(" ")[1]
+
+				if chart.type == "float"
+					arrs[num].data.push parseFloat line[num]
+
+				if chart.type == "int"
+					arrs[num].data.push parseInt line[num]
 
 	for num, arr of arrs when arr != undefined
 		if charts[num] != false
-			charts[num].data.datasets[0].data = arr
-			charts[num].data.labels = arr
-			charts[num].update()
+			charts[num].chart.data.datasets[0].data = arr.data
+			charts[num].chart.data.labels = arr.labels
+			charts[num].chart.update()
 
 ###################
 #### CONSTANTS ####
 ###################
 
 CHUNK_SIZE = 50
+
 CHUNK_PX_SIZE = 0
+ROW_PX_SIZE   = 0
 
 TOTAL_SIZE   = 0
 TOTAL_CHUNKS = 0
@@ -130,19 +168,37 @@ do ->
 
 	# check height
 	CHUNK_PX_SIZE = $tbody.clientHeight
+	ROW_PX_SIZE   = $tbody.children[0].clientHeight
 
 	# remove from table
 	$table.removeChild $tbody
 
 	# message
 	debug "chunk pixel size:", CHUNK_PX_SIZE
+	debug   "row pixel size:",   ROW_PX_SIZE
 
 graph = []
 
 class App
 	constructor: ->
 		# server replaces {{.}} into WebSocket URL
-		@ws = new WebSocket "{{.}}"
+		@ws = new WebSocket config.WS
+
+		@types   = JSON.parse config.types
+		debug "types:", @types
+
+		@headers = JSON.parse config.headers
+		debug "headers:", @headers
+
+		@timeColumn = 0
+
+		for num of @types
+			if @types[num] == "time"
+				timeColumn = num
+
+		for num of @types
+			addChart @types[num], @headers[num]
+
 		@$activeChunks = {}
 		@readyState = 2
 		@datas = {}
@@ -236,31 +292,42 @@ class App
 
 			# load chunks, bounding to user view
 			loadChunk Math.floor top    / CHUNK_PX_SIZE
+			loadChunk Math.floor top    / CHUNK_PX_SIZE - 1
 			loadChunk Math.floor bottom / CHUNK_PX_SIZE
+			loadChunk Math.floor bottom / CHUNK_PX_SIZE + 1
 
 			gr = []
 
 			# delete invisible chunks
+			self = @
 			for name, chunk of @$activeChunks
-				try
-					# calculate bottom and top of chunk
-					chunkTop = parseInt chunk.style.top
-					chunkBottom = chunkTop + CHUNK_PX_SIZE
+				run = (chunkTop, chunkBottom, chunkTopG, chunkBottomG) ->
+						# check, is chunk fits into container
+						unless (((chunkTop <= top) && (chunkBottom >= top)) or ((chunkTop <= bottom) && (chunkBottom >= bottom)))
+							# remove chunk from active chunks
+							delete self.$activeChunks[name]
 
-					# check, is chunk fits into container
-					unless (((chunkTop <= top) && (chunkBottom >= top)) or ((chunkTop <= bottom) && (chunkBottom >= bottom)))
-						# remove chunk from active chunks
-						delete @$activeChunks[name]
+							# remove chunk from table
+							$table.removeChild chunk
 
-						# remove chunk from table
-						$table.removeChild chunk
+							# message
+							debug "deleted invisible chunk", chunk
 
-						# message
-						debug "deleted invisible chunk", chunk
-					else
-						gr.push chunk.chunkData
+						if (((chunkTopG <= top) && (chunkBottomG >= top)) or ((chunkTopG <= bottom) && (chunkBottomG >= bottom)))
+							gr.push chunk.chunkData
 
-			parseGraphics gr
+				# calculate bottom and top of chunk
+				chunkTop = parseInt chunk.style.top
+				chunkBottom = chunkTop + CHUNK_PX_SIZE
+				run chunkTop - CHUNK_PX_SIZE, chunkBottom + CHUNK_PX_SIZE, chunkTop, chunkBottom
+
+			if config.animateLastChunk
+				parseGraphics [gr[gr.length - 1]]
+			else
+				parseGraphics gr
+
+			onend -> 
+				self.onscroll()
 
 
 	calculateSize: (size) ->

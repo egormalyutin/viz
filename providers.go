@@ -1,9 +1,5 @@
 package main
 
-import (
-	"github.com/malyutinegor/viz/logger"
-)
-
 var (
 	CurrentProvider = "csv"
 	Provider        = &ProviderType{}

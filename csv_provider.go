@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/malyutinegor/viz/logger"
 )
 
 type CSVProviderType struct {

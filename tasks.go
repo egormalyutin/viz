@@ -105,7 +105,7 @@ func WatchTask() {
 }
 
 func RunTask() {
-	run("go", "run", "config.go", "csv_provider.go", "providers.go", "web.go", "viz.go")
+	run("go", "run", "logger.go", "config.go", "csv_provider.go", "providers.go", "web.go", "viz.go")
 }
 
 func ProductionTask() {
@@ -119,6 +119,8 @@ func ProductionTask() {
 	gox("linux/386")
 	gox("linux/amd64")
 	gox("linux/arm")
+
+	os.Remove("rice-box.go")
 }
 
 ////////////////////////////////////////////////////////

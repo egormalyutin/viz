@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"text/template"
-
-	"github.com/malyutinegor/viz/logger"
 
 	"github.com/GeertJohan/go.rice"
 
@@ -25,6 +24,14 @@ var (
 
 	WatchChannel     = make(chan bool)
 	WatchDoneChannel = make(chan bool)
+
+	jsTemplate *template.Template
+
+	slashRG  = regexp.MustCompile(`\\`)
+	quotesRG = regexp.MustCompile(`"`)
+
+	stringTypes   string
+	stringHeaders string
 )
 
 type Request struct {
@@ -48,6 +55,12 @@ type ReadResponse struct {
 type ErrorResponse struct {
 	Type  string `json:"type"`
 	Error string `json:"error"`
+}
+
+type JSTemplate struct {
+	WS      string
+	Types   string
+	Headers string
 }
 
 func WSHandler(w http.ResponseWriter, r *http.Request) {
@@ -120,21 +133,26 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func runTemplate(w http.ResponseWriter, ws string, types string, headers string) {
+	tmpl := JSTemplate{
+		quotesRG.ReplaceAllString(slashRG.ReplaceAllString(ws, "\\\\"), "\\\""),
+		quotesRG.ReplaceAllString(slashRG.ReplaceAllString(types, "\\\\"), "\\\""),
+		quotesRG.ReplaceAllString(slashRG.ReplaceAllString(headers, "\\\\"), "\\\""),
+	}
+
+	jsTemplate.Execute(w, tmpl)
+}
+
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/main.js" {
 		// serve main script template
+		CompileTemplate()
 
-		templateString, err := Box.String("main.js")
-		if err != nil {
-			logger.Fatal("Error when trying to get main.js: ", err)
-		}
-		tmplMessage, err := template.New("jsresponse").Parse(templateString)
-		if err != nil {
-			logger.Fatal("Error when trying to compile main.js template: ", err)
-		}
-
-		addr := "ws://" + r.Host + "/ws"
-		tmplMessage.Execute(w, addr)
+		runTemplate(w,
+			"ws://"+r.Host+"/ws",
+			stringTypes,
+			stringHeaders,
+		)
 
 	} else {
 		// serve static files
@@ -142,9 +160,32 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func CompileTemplate() {
+	templateString, err := Box.String("main.js")
+	if err != nil {
+		logger.Fatal("Error when trying to get main.js: ", err)
+	}
+	jsTemplate, err = template.New("jsresponse").Parse(templateString)
+	if err != nil {
+		logger.Fatal("Error when trying to compile main.js template: ", err)
+	}
+}
+
 func Serve() {
+	byteTypes, err := json.Marshal(config.Types)
+	if err != nil {
+		logger.Fatal("Error when marshaling Types response: ", err)
+	}
+	stringTypes = string(byteTypes)
+
+	byteHeaders, err := json.Marshal(config.Headers)
+	if err != nil {
+		logger.Fatal("Error when marshaling Headers response: ", err)
+	}
+	stringHeaders = string(byteHeaders)
+
 	// port
-	port := 8080
+	port := config.Port
 	portString := fmt.Sprintf(":%d", port)
 
 	// box
@@ -158,16 +199,9 @@ func Serve() {
 	http.HandleFunc("/", HomeHandler)
 	http.HandleFunc("/ws", WSHandler)
 
-	go func() {
-		err := http.ListenAndServe(portString, nil)
+	err = http.ListenAndServe(portString, nil)
 
-		if err != nil {
-			logger.Fatal(fmt.Sprintf("Error when listening on port %d: ", port), err)
-		}
-	}()
-
-	go Provider.Watch(WatchChannel, WatchDoneChannel)
-	for _ = range WatchChannel {
-		logger.Print("Changed")
+	if err != nil {
+		logger.Fatal(fmt.Sprintf("Error when listening on port %d: ", port), err)
 	}
 }

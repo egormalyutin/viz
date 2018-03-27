@@ -5,8 +5,6 @@ import (
 	"io/ioutil"
 
 	"github.com/BurntSushi/toml"
-
-	"github.com/malyutinegor/viz/logger"
 )
 
 type CSVConfig struct {
@@ -15,6 +13,9 @@ type CSVConfig struct {
 
 type Config struct {
 	Provider string
+	Types    []string
+	Headers  []string
+	Port     int
 	CSV      CSVConfig
 }
 
@@ -39,5 +40,9 @@ func ParseConfig() {
 
 	default:
 		logger.Fatalf("Not found provider \"%s\"!", config.Provider)
+	}
+
+	if config.Port == 0 {
+		logger.Fatal("Port is not specified!")
 	}
 }
