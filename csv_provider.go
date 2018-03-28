@@ -31,6 +31,8 @@ func (p *CSVProviderType) Lines() int {
 	count := 0
 	lineSep := []byte{'\n'}
 
+	p.file.Seek(0, 0)
+
 	for {
 		c, err := p.file.Read(buf)
 		count += bytes.Count(buf[:c], lineSep)
@@ -47,7 +49,7 @@ func (p *CSVProviderType) Lines() int {
 
 // read lines from start to (end - 1)
 func (p *CSVProviderType) Read(start int, end int) []string {
-	acc := make([]string, 0)
+	acc := []string{}
 
 	p.file.Seek(0, 0)
 	scanner := bufio.NewScanner(p.file)

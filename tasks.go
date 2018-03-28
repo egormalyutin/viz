@@ -37,7 +37,7 @@ func logf(e1 string, e2 ...interface{}) {
 ////////////////////////////////////////////////////////
 
 func run(command string, commands ...string) {
-	outSlice := make([]interface{}, 0)
+	outSlice := []interface{}{}
 	outSlice = append(outSlice, ">")
 	outSlice = append(outSlice, command)
 

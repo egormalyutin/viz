@@ -10,6 +10,7 @@ import (
 
 	"github.com/GeertJohan/go.rice"
 
+	evbus "github.com/asaskevich/EventBus"
 	ws "github.com/gorilla/websocket"
 )
 
@@ -20,7 +21,7 @@ var (
 	HTTPBox   *rice.HTTPBox
 	HTTPFiles http.Handler
 
-	StaticRoutes = make([]string, 0)
+	StaticRoutes = []string{}
 
 	WatchChannel     = make(chan bool)
 	WatchDoneChannel = make(chan bool)
@@ -32,6 +33,8 @@ var (
 
 	stringTypes   string
 	stringHeaders string
+
+	bus = evbus.New()
 )
 
 type Request struct {
@@ -71,66 +74,88 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer c.Close()
 
-	for {
-		_, message, err := c.ReadMessage()
+	wrt := func(text []byte) error {
+		return c.WriteMessage(ws.TextMessage, text)
+	}
+
+	done := make(chan bool)
+
+	linesCountWriter := func() {
+		lines := Provider.Lines()
+		resp := LinesCountResponse{"linesCount", lines}
+		data, err := json.Marshal(resp)
 		if err != nil {
-			break
-		}
-
-		wrt := func(text []byte) error {
-			return c.WriteMessage(ws.TextMessage, text)
-		}
-
-		handleError := func(err error) error {
-			resp := ErrorResponse{"error", fmt.Sprint(err)}
-			data, err2 := json.Marshal(resp)
-			if err2 != nil {
-				logger.Fatal("Error when generating error JSON:", err2)
-			}
-			logger.Println(string(data))
-			return wrt(data)
-		}
-
-		request := Request{}
-		if err := json.Unmarshal(message, &request); err != nil {
-			if handleError(err) != nil {
-				break
-			}
-		}
-
-		switch request.Type {
-		case "linesCount":
-			lines := Provider.Lines()
-			resp := LinesCountResponse{"linesCount", lines}
-			data, err := json.Marshal(resp)
-			if err != nil {
-				logger.Error("Error when marshaling LinesCount response:", err)
-			} else {
-				wrt(data)
-			}
-
-		case "read":
-			lines := Provider.Read(request.Start, request.End)
-			str := strings.Join(lines, "\n")
-			resp := ReadResponse{"read", str, request.ID}
-			data, err := json.Marshal(resp)
-			if err != nil {
-				logger.Error("Error when marshaling Read response:", err)
-			} else {
-				wrt(data)
-			}
-
-		default:
-			str := fmt.Sprintf("Not found command \"%s\"!", request.Type)
-			resp := ErrorResponse{"error", str}
-			data, err := json.Marshal(resp)
-			if err != nil {
-				logger.Error("Error when marshaling Error response:", err)
-			} else {
-				wrt(data)
-			}
+			logger.Error("Error when marshaling LinesCount response:", err)
+		} else {
+			wrt(data)
 		}
 	}
+
+	bus.Subscribe("provider:watch", linesCountWriter)
+	defer bus.Unsubscribe("provider:watch", linesCountWriter)
+
+	go func() {
+		defer func() { done <- true }()
+
+		for {
+			_, message, err := c.ReadMessage()
+			if err != nil {
+				break
+			}
+
+			handleError := func(err error) error {
+				resp := ErrorResponse{"error", fmt.Sprint(err)}
+				data, err2 := json.Marshal(resp)
+				if err2 != nil {
+					logger.Fatal("Error when generating error JSON:", err2)
+				}
+				logger.Println(string(data))
+				return wrt(data)
+			}
+
+			request := Request{}
+			if err := json.Unmarshal(message, &request); err != nil {
+				if handleError(err) != nil {
+					break
+				}
+			}
+
+			switch request.Type {
+			case "linesCount":
+				lines := Provider.Lines()
+				resp := LinesCountResponse{"linesCount", lines}
+				data, err := json.Marshal(resp)
+				if err != nil {
+					logger.Error("Error when marshaling LinesCount response:", err)
+				} else {
+					wrt(data)
+				}
+
+			case "read":
+				lines := Provider.Read(request.Start, request.End)
+				str := strings.Join(lines, "\n")
+				resp := ReadResponse{"read", str, request.ID}
+				data, err := json.Marshal(resp)
+				if err != nil {
+					logger.Error("Error when marshaling Read response:", err)
+				} else {
+					wrt(data)
+				}
+
+			default:
+				str := fmt.Sprintf("Not found command \"%s\"!", request.Type)
+				resp := ErrorResponse{"error", str}
+				data, err := json.Marshal(resp)
+				if err != nil {
+					logger.Error("Error when marshaling Error response:", err)
+				} else {
+					wrt(data)
+				}
+			}
+		}
+	}()
+
+	<-done
 }
 
 func runTemplate(w http.ResponseWriter, ws string, types string, headers string) {
@@ -199,9 +224,24 @@ func Serve() {
 	http.HandleFunc("/", HomeHandler)
 	http.HandleFunc("/ws", WSHandler)
 
-	err = http.ListenAndServe(portString, nil)
+	done := make(chan bool)
 
-	if err != nil {
-		logger.Fatal(fmt.Sprintf("Error when listening on port %d: ", port), err)
-	}
+	go func() {
+		err = http.ListenAndServe(portString, nil)
+
+		if err != nil {
+			logger.Fatal(fmt.Sprintf("Error when listening on port %d: ", port), err)
+		}
+	}()
+
+	go func() {
+		ch := make(chan bool)
+		go Provider.Watch(ch, done)
+		for _ = range ch {
+			bus.Publish("provider:watch")
+		}
+	}()
+
+	<-done
+	return
 }
