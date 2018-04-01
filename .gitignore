@@ -3,8 +3,13 @@
 /build
 /viz
 /tasks
+/tasks.exe
+/tasks.exe~
 /viz.toml
 /dist
 /yarn.lock
 /package-lock.json
 /rice-box.go
+/*_easyjson.go
+/*.tmp
+/easyjson-*.go

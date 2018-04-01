@@ -37,24 +37,28 @@ var (
 	bus = evbus.New()
 )
 
+//easyjson:json
 type Request struct {
-	Type  string
-	Start int
-	End   int
-	ID    int
+	Type  string `json:"type"`
+	Start int    `json:"start"`
+	End   int    `json:"end"`
+	ID    int    `json:"id"`
 }
 
+//easyjson:json
 type LinesCountResponse struct {
 	Type       string `json:"type"`
 	LinesCount int    `json:"linesCount"`
 }
 
+//easyjson:json
 type ReadResponse struct {
 	Type  string `json:"type"`
 	Lines string `json:"lines"`
 	ID    int    `json:"id"`
 }
 
+//easyjson:json
 type ErrorResponse struct {
 	Type  string `json:"type"`
 	Error string `json:"error"`
@@ -83,7 +87,7 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 	linesCountWriter := func() {
 		lines := Provider.Lines()
 		resp := LinesCountResponse{"linesCount", lines}
-		data, err := json.Marshal(resp)
+		data, err := resp.MarshalJSON()
 		if err != nil {
 			logger.Error("Error when marshaling LinesCount response:", err)
 		} else {
@@ -105,7 +109,7 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 
 			handleError := func(err error) error {
 				resp := ErrorResponse{"error", fmt.Sprint(err)}
-				data, err2 := json.Marshal(resp)
+				data, err2 := resp.MarshalJSON()
 				if err2 != nil {
 					logger.Fatal("Error when generating error JSON:", err2)
 				}
@@ -113,8 +117,8 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 				return wrt(data)
 			}
 
-			request := Request{}
-			if err := json.Unmarshal(message, &request); err != nil {
+			request := &Request{}
+			if err := request.UnmarshalJSON(message); err != nil {
 				if handleError(err) != nil {
 					break
 				}
@@ -124,7 +128,7 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 			case "linesCount":
 				lines := Provider.Lines()
 				resp := LinesCountResponse{"linesCount", lines}
-				data, err := json.Marshal(resp)
+				data, err := resp.MarshalJSON()
 				if err != nil {
 					logger.Error("Error when marshaling LinesCount response:", err)
 				} else {
@@ -135,7 +139,7 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 				lines := Provider.Read(request.Start, request.End)
 				str := strings.Join(lines, "\n")
 				resp := ReadResponse{"read", str, request.ID}
-				data, err := json.Marshal(resp)
+				data, err := resp.MarshalJSON()
 				if err != nil {
 					logger.Error("Error when marshaling Read response:", err)
 				} else {
@@ -145,7 +149,7 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 			default:
 				str := fmt.Sprintf("Not found command \"%s\"!", request.Type)
 				resp := ErrorResponse{"error", str}
-				data, err := json.Marshal(resp)
+				data, err := resp.MarshalJSON()
 				if err != nil {
 					logger.Error("Error when marshaling Error response:", err)
 				} else {
@@ -158,11 +162,11 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 	<-done
 }
 
-func runTemplate(w http.ResponseWriter, ws string, types string, headers string) {
+func runTemplate(w http.ResponseWriter, host string) {
 	tmpl := JSTemplate{
-		quotesRG.ReplaceAllString(slashRG.ReplaceAllString(ws, "\\\\"), "\\\""),
-		quotesRG.ReplaceAllString(slashRG.ReplaceAllString(types, "\\\\"), "\\\""),
-		quotesRG.ReplaceAllString(slashRG.ReplaceAllString(headers, "\\\\"), "\\\""),
+		quotesRG.ReplaceAllString(slashRG.ReplaceAllString("ws://"+host+"/ws", "\\\\"), "\\\""),
+		quotesRG.ReplaceAllString(slashRG.ReplaceAllString(stringTypes, "\\\\"), "\\\""),
+		quotesRG.ReplaceAllString(slashRG.ReplaceAllString(stringHeaders, "\\\\"), "\\\""),
 	}
 
 	jsTemplate.Execute(w, tmpl)
@@ -173,11 +177,7 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 		// serve main script template
 		CompileTemplate()
 
-		runTemplate(w,
-			"ws://"+r.Host+"/ws",
-			stringTypes,
-			stringHeaders,
-		)
+		runTemplate(w, r.Host)
 
 	} else {
 		// serve static files

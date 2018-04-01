@@ -3,13 +3,18 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strings"
 
 	"gopkg.in/alecthomas/kingpin.v2"
 )
+
+var gopath string
 
 ////////////////////////////////////////////////////////
 
@@ -59,6 +64,20 @@ func run(command string, commands ...string) {
 	}
 }
 
+func bin(command string, commands ...string) {
+	if gopath == "" {
+		cmd := exec.Command("go", "env", "GOPATH")
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		err := cmd.Run()
+		if err != nil {
+			hr(err)
+		}
+		gopath = strings.Trim(out.String(), "\n ")
+	}
+	run(filepath.Join(gopath, "bin", command), commands...)
+}
+
 func checkPath(pth string, name string) {
 	_, err := exec.LookPath(pth)
 	if err == nil {
@@ -69,7 +88,35 @@ func checkPath(pth string, name string) {
 }
 
 func gox(osarch string) {
-	run("gox", "-osarch="+osarch, "-output=build/{{.Dir}}_{{.OS}}_{{.Arch}}")
+	bin("gox", "-osarch="+osarch, "-output=build/{{.Dir}}_{{.OS}}_{{.Arch}}")
+}
+
+func easyjson() {
+	fmt.Println("Generating easyjson code...")
+	if gopath == "" {
+		cmd := exec.Command("go", "env", "GOPATH")
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		err := cmd.Run()
+		if err != nil {
+			hr(err)
+		}
+		gopath = strings.Trim(out.String(), "\n ")
+	}
+
+	env := os.Environ()
+	env = append(env, "GOPATH="+gopath)
+	cmd := exec.Command(filepath.Join(gopath, "bin", "easyjson"), "web.go")
+	cmd.Env = env
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	err := cmd.Run()
+	if err != nil {
+		hr(err)
+	}
 }
 
 ////////////////////////////////////////////////////////
@@ -95,7 +142,7 @@ func PrepareTask() {
 	run("npm", "i")
 
 	log("Installing Go dependencies...")
-	run("go", "get", "./...", "github.com/mitchellh/gox", "github.com/GeertJohan/go.rice", "github.com/GeertJohan/go.rice/rice")
+	run("go", "get", "./...", "github.com/mitchellh/gox", "github.com/GeertJohan/go.rice", "github.com/GeertJohan/go.rice/rice", "golang.org/x/sys/unix", "github.com/mailru/easyjson/...")
 
 	log("Ready for development!")
 }
@@ -105,12 +152,14 @@ func WatchTask() {
 }
 
 func RunTask() {
-	run("go", "run", "logger.go", "config.go", "csv_provider.go", "providers.go", "web.go", "viz.go")
+	easyjson()
+	run("go", "run", "logger.go", "config.go", "csv_provider.go", "providers.go", "web.go", "viz.go", "web_easyjson.go")
 }
 
 func ProductionTask() {
 	run("gulp", "build", "--production")
-	run("rice", "embed-go")
+	bin("rice", "embed-go")
+	easyjson()
 
 	os.RemoveAll("build")
 
