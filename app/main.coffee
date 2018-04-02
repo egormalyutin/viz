@@ -2,10 +2,12 @@
 #### CONFIG ####
 ################
 
+alert "hi"
+
 config =
-	WS: '{{.WS}}'
-	types: '{{.Types}}'
-	headers: '{{.Headers}}'
+	WS: '{{ws}}'
+	types: '{{types}}'
+	headers: '{{headers}}'
 
 	animation: false
 	animateLastChunk: true

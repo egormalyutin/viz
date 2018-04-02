@@ -153,7 +153,7 @@ func WatchTask() {
 
 func RunTask() {
 	easyjson()
-	run("go", "run", "logger.go", "config.go", "csv_provider.go", "providers.go", "web.go", "viz.go", "web_easyjson.go")
+	run("go", "run", "logger.go", "config.go", "csv_provider.go", "providers.go", "web_fasthttp.go", "viz.go", "web_easyjson.go")
 }
 
 func ProductionTask() {
