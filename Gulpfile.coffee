@@ -28,6 +28,7 @@ if gulp.parallel
 else
 	clean = ['clean']
 
+# TODO: better js min
 builders = (w) ->
 	f = null
 
@@ -58,9 +59,7 @@ builders = (w) ->
 			.pipe gulp.dest "dist"
 	else
 		f "app/**/*.coffee"
-			.pipe sourcemaps.init()
 			.pipe coffee bare: true
-			.pipe sourcemaps.write('./maps')
 			.pipe debug title: "Compiled"
 			.pipe gulp.dest "dist"
 
@@ -91,6 +90,5 @@ else
 
 gulp.task 'watch', build, ->
 	builders true
-
 
 gulp.task 'default', build

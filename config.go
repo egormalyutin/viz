@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	purl "net/url"
 
 	"github.com/BurntSushi/toml"
 )
@@ -12,11 +13,21 @@ type CSVConfig struct {
 }
 
 type Config struct {
-	Provider string
-	Types    []string
-	Headers  []string
-	Port     int
-	CSV      CSVConfig
+	Provider         string
+	Types            []string
+	Headers          []string
+	Animation        bool
+	AnimateLastChunk bool
+	Port             int
+	CSV              CSVConfig
+}
+
+type ConfigJSON struct {
+	Types            []string `json:"types"`
+	Headers          []string `json:"headers"`
+	Animation        bool     `json:"animation"`
+	AnimateLastChunk bool     `json:"animateLastChunk"`
+	WS               string   `json:"WS"`
 }
 
 var config Config
@@ -44,5 +55,16 @@ func ParseConfig() {
 
 	if config.Port == 0 {
 		logger.Fatal("Port is not specified!")
+	}
+}
+
+func getConfigJSON(url *purl.URL) ConfigJSON {
+	logger.Print(url)
+	return ConfigJSON{
+		config.Types,
+		config.Headers,
+		config.Animation,
+		config.AnimateLastChunk,
+		"ws://" + url.Host + "/ws",
 	}
 }

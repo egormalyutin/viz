@@ -91,34 +91,6 @@ func gox(osarch string) {
 	bin("gox", "-osarch="+osarch, "-output=build/{{.Dir}}_{{.OS}}_{{.Arch}}")
 }
 
-func easyjson() {
-	fmt.Println("Generating easyjson code...")
-	if gopath == "" {
-		cmd := exec.Command("go", "env", "GOPATH")
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		err := cmd.Run()
-		if err != nil {
-			hr(err)
-		}
-		gopath = strings.Trim(out.String(), "\n ")
-	}
-
-	env := os.Environ()
-	env = append(env, "GOPATH="+gopath)
-	cmd := exec.Command(filepath.Join(gopath, "bin", "easyjson"), "web.go")
-	cmd.Env = env
-
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-
-	err := cmd.Run()
-	if err != nil {
-		hr(err)
-	}
-}
-
 ////////////////////////////////////////////////////////
 
 func PrepareTask() {
@@ -142,7 +114,7 @@ func PrepareTask() {
 	run("npm", "i")
 
 	log("Installing Go dependencies...")
-	run("go", "get", "./...", "github.com/mitchellh/gox", "github.com/GeertJohan/go.rice", "github.com/GeertJohan/go.rice/rice", "golang.org/x/sys/unix", "github.com/mailru/easyjson/...")
+	run("go", "get", "./...", "github.com/mitchellh/gox", "github.com/GeertJohan/go.rice", "github.com/GeertJohan/go.rice/rice", "golang.org/x/sys/unix")
 
 	log("Ready for development!")
 }
@@ -152,14 +124,12 @@ func WatchTask() {
 }
 
 func RunTask() {
-	easyjson()
-	run("go", "run", "logger.go", "config.go", "csv_provider.go", "providers.go", "web_fasthttp.go", "viz.go", "web_easyjson.go")
+	run("go", "run", "logger.go", "config.go", "csv_provider.go", "providers.go", "web.go", "viz.go")
 }
 
 func ProductionTask() {
 	run("gulp", "build", "--production")
 	bin("rice", "embed-go")
-	easyjson()
 
 	os.RemoveAll("build")
 

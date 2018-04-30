@@ -1,17 +1,3 @@
-################
-#### CONFIG ####
-################
-
-alert "hi"
-
-config =
-	WS: '{{ws}}'
-	types: '{{types}}'
-	headers: '{{headers}}'
-
-	animation: false
-	animateLastChunk: true
-
 #################
 #### HELPERS ####
 #################
@@ -212,9 +198,9 @@ class App
 		$cont.onscroll = -> self.onscroll.apply self, arguments
 
 		@ws.onmessage = -> self.commands.message.apply self, arguments
-		@ws.onopen    = -> self.commands.open.apply self,    arguments
-		@ws.onerror   = -> self.commands.error.apply self,   arguments
-		@ws.onclose   = -> self.commands.close.apply self,   arguments
+		@ws.onopen    = ->    self.commands.open.apply self, arguments
+		@ws.onerror   = ->   self.commands.error.apply self, arguments
+		@ws.onclose   = ->   self.commands.close.apply self, arguments
 
 	commands:
 		lines: (n) ->

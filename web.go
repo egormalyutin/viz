@@ -1,12 +1,12 @@
+//+build ignore
+
 package main
 
 import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strings"
-	"text/template"
 
 	"github.com/GeertJohan/go.rice"
 
@@ -26,18 +26,12 @@ var (
 	WatchChannel     = make(chan bool)
 	WatchDoneChannel = make(chan bool)
 
-	jsTemplate *template.Template
-
-	slashRG  = regexp.MustCompile(`\\`)
-	quotesRG = regexp.MustCompile(`"`)
-
 	stringTypes   string
 	stringHeaders string
 
 	bus = evbus.New()
 )
 
-//easyjson:json
 type Request struct {
 	Type  string `json:"type"`
 	Start int    `json:"start"`
@@ -45,29 +39,20 @@ type Request struct {
 	ID    int    `json:"id"`
 }
 
-//easyjson:json
 type LinesCountResponse struct {
 	Type       string `json:"type"`
 	LinesCount int    `json:"linesCount"`
 }
 
-//easyjson:json
 type ReadResponse struct {
 	Type  string `json:"type"`
 	Lines string `json:"lines"`
 	ID    int    `json:"id"`
 }
 
-//easyjson:json
 type ErrorResponse struct {
 	Type  string `json:"type"`
 	Error string `json:"error"`
-}
-
-type JSTemplate struct {
-	WS      string
-	Types   string
-	Headers string
 }
 
 func WSHandler(w http.ResponseWriter, r *http.Request) {
@@ -87,7 +72,7 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 	linesCountWriter := func() {
 		lines := Provider.Lines()
 		resp := LinesCountResponse{"linesCount", lines}
-		data, err := resp.MarshalJSON()
+		data, err := json.Marshal(resp)
 		if err != nil {
 			logger.Error("Error when marshaling LinesCount response:", err)
 		} else {
@@ -109,7 +94,7 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 
 			handleError := func(err error) error {
 				resp := ErrorResponse{"error", fmt.Sprint(err)}
-				data, err2 := resp.MarshalJSON()
+				data, err2 := json.Marshal(resp)
 				if err2 != nil {
 					logger.Fatal("Error when generating error JSON:", err2)
 				}
@@ -118,7 +103,7 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			request := &Request{}
-			if err := request.UnmarshalJSON(message); err != nil {
+			if err := json.Unmarshal(message, request); err != nil {
 				if handleError(err) != nil {
 					break
 				}
@@ -128,7 +113,7 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 			case "linesCount":
 				lines := Provider.Lines()
 				resp := LinesCountResponse{"linesCount", lines}
-				data, err := resp.MarshalJSON()
+				data, err := json.Marshal(resp)
 				if err != nil {
 					logger.Error("Error when marshaling LinesCount response:", err)
 				} else {
@@ -139,7 +124,7 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 				lines := Provider.Read(request.Start, request.End)
 				str := strings.Join(lines, "\n")
 				resp := ReadResponse{"read", str, request.ID}
-				data, err := resp.MarshalJSON()
+				data, err := json.Marshal(resp)
 				if err != nil {
 					logger.Error("Error when marshaling Read response:", err)
 				} else {
@@ -149,7 +134,7 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 			default:
 				str := fmt.Sprintf("Not found command \"%s\"!", request.Type)
 				resp := ErrorResponse{"error", str}
-				data, err := resp.MarshalJSON()
+				data, err := json.Marshal(resp)
 				if err != nil {
 					logger.Error("Error when marshaling Error response:", err)
 				} else {
@@ -162,53 +147,24 @@ func WSHandler(w http.ResponseWriter, r *http.Request) {
 	<-done
 }
 
-func runTemplate(w http.ResponseWriter, host string) {
-	tmpl := JSTemplate{
-		quotesRG.ReplaceAllString(slashRG.ReplaceAllString("ws://"+host+"/ws", "\\\\"), "\\\""),
-		quotesRG.ReplaceAllString(slashRG.ReplaceAllString(stringTypes, "\\\\"), "\\\""),
-		quotesRG.ReplaceAllString(slashRG.ReplaceAllString(stringHeaders, "\\\\"), "\\\""),
-	}
-
-	jsTemplate.Execute(w, tmpl)
-}
-
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/main.js" {
-		// serve main script template
-		CompileTemplate()
-
-		runTemplate(w, r.Host)
-
+	if r.URL.Path == "/config.js" {
+		// generate config js
+		logger.Print(r.URL)
+		data, err := json.Marshal(getConfigJSON(r.URL))
+		if err != nil {
+			logger.Error("Error when trying to generate JS config: ", data)
+		} else {
+			data = []byte("var config = JSON.parse(`" + string(data) + "`);")
+			w.Write(data)
+		}
 	} else {
 		// serve static files
 		HTTPFiles.ServeHTTP(w, r)
 	}
 }
 
-func CompileTemplate() {
-	templateString, err := Box.String("main.js")
-	if err != nil {
-		logger.Fatal("Error when trying to get main.js: ", err)
-	}
-	jsTemplate, err = template.New("jsresponse").Parse(templateString)
-	if err != nil {
-		logger.Fatal("Error when trying to compile main.js template: ", err)
-	}
-}
-
 func Serve() {
-	byteTypes, err := json.Marshal(config.Types)
-	if err != nil {
-		logger.Fatal("Error when marshaling Types response: ", err)
-	}
-	stringTypes = string(byteTypes)
-
-	byteHeaders, err := json.Marshal(config.Headers)
-	if err != nil {
-		logger.Fatal("Error when marshaling Headers response: ", err)
-	}
-	stringHeaders = string(byteHeaders)
-
 	// port
 	port := config.Port
 	portString := fmt.Sprintf(":%d", port)
@@ -227,9 +183,7 @@ func Serve() {
 	done := make(chan bool)
 
 	go func() {
-		err = http.ListenAndServe(portString, nil)
-
-		if err != nil {
+		if err := http.ListenAndServe(portString, nil); err != nil {
 			logger.Fatal(fmt.Sprintf("Error when listening on port %d: ", port), err)
 		}
 	}()
