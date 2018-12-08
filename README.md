@@ -1,5 +1,5 @@
 <p align="center">
-	<a href="http://github.com/malyutinegor/viz"> <img width="500" title="VIZ logo" src="https://cdn.rawgit.com/malyutinegor/viz/master/logo.svg"> </a>
+	<a href="http://github.com/malyutinegor/viz"> <img width="500" title="VIZ logo" src="https://cdn.jsdelivr.net/gh/malyutinegor/viz/logo.svg"> </a>
 	<br>
 	<br>
 	<br>
